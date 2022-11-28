@@ -1,4 +1,5 @@
 //jshint esversion:6
+
 require('dotenv').config();
 const express = require('express');
 const ejs = require('ejs');
@@ -7,7 +8,8 @@ const session = require('express-session');
 const passport = require('passport');
 const passportLocalMongoose = require("passport-local-mongoose");
 const connectEnsureLogin = require('connect-ensure-login'); // authorization
-
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const findOrCreate = require('mongoose-findorcreate');
 
 
 // const encrypt = require('mongoose-encryption'); for encryption with mongoose
@@ -35,30 +37,80 @@ mongoose.connect("mongodb://127.0.0.1/userDB", {useNewUrlParser: true});
 
 const userSchema = new mongoose.Schema ({
   username: String,
-  password: String
+  password: String,
+  googleId: String
 });
 
 // set up passport-local-mongoose
 userSchema.plugin(passportLocalMongoose);
+// plugin for findorcreate pseudo method
+userSchema.plugin(findOrCreate);
 
 const User = new mongoose.model("User", userSchema);
 
 
-// local strategy to authenticate user with username and password
+// Configuring local strategy to authenticate user with username and password
 passport.use(User.createStrategy());
-// necessary when we use sessions
-passport.serializeUser(User.serializeUser()); /* creates cookie and stuffs the message (user and identification) inside the cookie*/
-passport.deserializeUser(User.deserializeUser()); /* allows passport to know who the user is and their identification using the cookie */
 
+// serialize and deserialize using passport
+passport.serializeUser(function(user, cb) {
+    process.nextTick(function() {
+      return cb(null, {
+        id: user.id,
+        username: user.username,
+        picture: user.picture
+      });
+    });
+  });
+  
+  passport.deserializeUser(function(user, cb) {
+    process.nextTick(function() {
+      return cb(null, user);
+    });
+  });
+
+
+// Configuring google Strategy
+passport.use(new GoogleStrategy({
+    clientID: process.env.CLIENT_ID,
+    clientSecret: process.env.CLIENT_SECRET,
+    callbackURL: "http://localhost:3000/auth/google/secrets",
+    userProfileURL: "https://www.googleapis.com/oauth2/v3/userinfo"
+  },
+  function(accessToken, refreshToken, profile, cb) {
+    console.log(profile);
+
+    User.findOrCreate({ googleId: profile.id }, function (err, user) {
+      return cb(err, user);
+    });
+  }
+));
+
+
+// GET
 app.get("/", function(req, res){
   res.render("home");
 });
 
+
+app.get("/auth/google",
+    passport.authenticate("google", {scope: ["profile"], prompt: 'select_account' }));
+
+app.get("/auth/google/secrets", 
+    passport.authenticate("google", { failureRedirect: "/login" }),
+    function(req, res) {
+      // Successful authentication, redirect to secrets.
+      res.redirect('/secrets');
+});
+
+
 app.get('/dashboard', connectEnsureLogin.ensureLoggedIn(), (req, res) => {
-    res.send(`Hello ${req.user.username}. Your session ID is ${req.sessionID}.
+    res.send(`Hello ${req.user.username}. Your session ID is ${req.sessionID}. Your session expires in ${req.session.cookie}. <br>
      <a href="/logout">Log Out</a><br><br>
-     <a href="/secret">Members Only</a>`);
+     <a href="/secrets">Members Only</a>`);
+     console.log(req.session.cookie);
   });
+
 
 // mostro la pagina secrets solo se l'utente è già autenticato 
 app.get("/secrets", function(req, res){
@@ -125,3 +177,11 @@ app.route("/register")
 app.listen('3000', function() {
   console.log("Server started on port 3000.");
 });
+
+
+
+
+
+
+
+
