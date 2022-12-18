@@ -13,8 +13,6 @@ const findOrCreate = require('mongoose-findorcreate');
 const FacebookStrategy = require('passport-facebook').Strategy;
 
 
-// const encrypt = require('mongoose-encryption'); for encryption with mongoose
-// const md5 = require('md5'); /* for encrypting password with md5 */
 
 const app = express();
 
@@ -30,7 +28,6 @@ app.use(session({
 }));
 
 // configure more middleware
-// initialize passport (see passport documentation)
 app.use(passport.initialize());
 app.use(passport.session()); /* set up our session with passport */
 
@@ -141,7 +138,6 @@ app.get("/secrets", function(req, res){
     })
 });
 
-// mostro la pagina submit solo se l'utente è già autenticato 
 app.route("/submit")
     .get(function(req, res){
     if (req.isAuthenticated()) {
