@@ -22,14 +22,14 @@ app.use(express.urlencoded({extended: true}));
 
 // configure session middleware
 app.use(session({
-    secret: process.env.SECRET, /* solitamente è meglio importare la chiave segreta da un environemtal variable */
+    secret: process.env.SECRET, 
     resave: false,
-    saveUninitialized: false /* forces an unititialized session to be saved to the store */
+    saveUninitialized: false /
 }));
 
 // configure more middleware
 app.use(passport.initialize());
-app.use(passport.session()); /* set up our session with passport */
+app.use(passport.session()); /
 
 mongoose.connect("mongodb://127.0.0.1/userDB", {useNewUrlParser: true});
 
